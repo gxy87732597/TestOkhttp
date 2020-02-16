@@ -10,6 +10,8 @@ import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
+import com.google.gson.Gson;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,10 +22,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import domain.User;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.FormBody;
 import okhttp3.MediaType;
+import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -307,8 +311,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //提交表单
-
-
     public void testSubmitForm(View view) {
         FormBody formBody = new FormBody.Builder()
                 .add("username","slimee")
@@ -330,5 +332,109 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+    }
+
+    //上传文件
+    public void testSubmitFileForm(View view) {
+        //File类型的RequestBody
+        RequestBody imageRequestBody = RequestBody.create(MediaType.parse("application/octet-stream"),new File("/sdcard/a.jpg"));
+
+        //创建MultipartBody，通过addFormDataPart方法添加每一个表单
+        MultipartBody multipartBody = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("nickname", "测试")
+                .addFormDataPart("image", "test.jpg", imageRequestBody)
+                .build();
+
+        Request request = new Request.Builder()
+                .url("https://api.github.com/markdown/raw")
+                .post(multipartBody)
+                .build();
+
+        okHttpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                showThreadInfo(e.getLocalizedMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                String result = response.body().string();
+                showThreadInfo(result);
+            }
+        });
+    }
+
+    public void testPutPatchForm(View view) {
+        Request getRequest = new Request.Builder()
+                .url("https://api.github.com/markdown/raw")
+                .get()
+                .build();
+
+        Request postRequest = new Request.Builder()
+                .url("https://api.github.com/markdown/raw")
+                .post(RequestBody.create(MEDIA_TYPE_MARKDOWN, "这是一段Markdown代码"))
+                .build();
+
+        Request  headRequest = new Request.Builder()
+                .url("https://api.github.com/markdown/raw")
+                .head()
+                .build();
+
+        Request putRequest = new Request.Builder()
+                .url("https://api.github.com/markdown/raw")
+                .put(RequestBody.create(MEDIA_TYPE_MARKDOWN, "这是一段Markdown代码"))
+                .build();
+
+        Request patchRequest = new Request.Builder()
+                .url("https://api.github.com/markdown/raw")
+                .patch(RequestBody.create(MEDIA_TYPE_MARKDOWN, "这是一段Markdown代码"))
+                .build();
+
+        okHttpClient.newCall(getRequest).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                showThreadInfo(e.getLocalizedMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                String result = response.body().string();
+                showThreadInfo(result);
+            }
+        });
+
+    }
+
+    //解析JSON
+    
+    public void testParseObject(View view) {
+        Request request = new Request.Builder().url("https://api.github.com/users/lifengsofts").build();
+
+        okHttpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        tv.setText(e.getLocalizedMessage());
+                    }
+                });
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if(response.isSuccessful()){
+                    Reader reader = response.body().charStream();
+                    Gson gson = new Gson();
+                    User user = gson.fromJson(reader,User.class);
+                    showThreadInfo(user.toString());
+
+                }else{
+                    showThreadInfo("请求失败");
+                }
+
+            }
+        });
     }
 }
