@@ -1,8 +1,11 @@
 package com.example.testokhttp;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
@@ -71,7 +74,6 @@ public class MainActivity extends AppCompatActivity {
         }.start();
     }
 
-
     private void showThreadInfo(String result) {
         runOnUiThread(new Runnable() {
             @Override
@@ -92,7 +94,6 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onFailure(Call call, final IOException e) {
                 showThreadInfo(e.getLocalizedMessage());
-
             }
 
             @Override
@@ -129,6 +130,86 @@ public class MainActivity extends AppCompatActivity {
             public void onResponse(Call call, Response response) throws IOException {
                 String result = response.body().string();
                 showThreadInfo(result);
+            }
+        });
+    }
+
+    //handler更新UI
+    //这种使用handler会存在内存泄露的问题，但这里不考虑这些，只是测试
+    private Handler handler = new Handler(){
+        @Override
+        public void handleMessage(@NonNull Message msg) {
+            super.handleMessage(msg);
+            tv.setText(msg.obj.toString());
+        }
+    };
+
+    public void testHandlerUpdataUI(View view) {
+
+        Request request = new Request.Builder().url("https://github.com/gxy87732597").build();
+
+        this.okHttpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                showThreadInfo(e.getLocalizedMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if(response.isSuccessful()){
+                    handler.obtainMessage(0,response.body().string()).sendToTarget();
+                }else{
+                    showThreadInfo("请求失败");
+                }
+            }
+        });
+    }
+
+    //runOnUiThread更新UI
+    public void textRunOnUiThreadUpdataUI(View view) {
+        Request request = new Request.Builder().url("https://github.com/gxy87732597").build();
+
+        okHttpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                showThreadInfo(e.getLocalizedMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if(response.isSuccessful()){
+                    String result = response.body().string();
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            tv.setText(result);
+                        }
+                    });
+                }
+
+            }
+        });
+    }
+
+
+    public void testViewPostUpdataUI(View view) {
+        Request request = new Request.Builder().url("https://github.com/gxy87732597").build();
+
+        okHttpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                showThreadInfo(e.getLocalizedMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                String result = response.body().string();
+               tv.post(new Runnable() {
+                   @Override
+                   public void run() {
+                       tv.setText(result);
+                   }
+               });
             }
         });
 

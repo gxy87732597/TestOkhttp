@@ -33,4 +33,25 @@
         android:text="配置单个请求"
         android:onClick="setOnRequestConfing"/>
 
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="handler更新UI"
+        android:onClick="testHandlerUpdataUI"
+        />
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="runOnUiTheard更新UI"
+        android:onClick="textRunOnUiThreadUpdataUI"
+        />
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="ViewPost更新UI"
+        android:onClick="testViewPostUpdataUI"
+        />
+
 </LinearLayout>
