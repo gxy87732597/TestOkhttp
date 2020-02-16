@@ -20,4 +20,17 @@
         android:text="Get请求"
         />
 
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:onClick="testAsyncGet"
+        android:text="Get异步请求"
+        />
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="配置单个请求"
+        android:onClick="setOnRequestConfing"/>
+
 </LinearLayout>
