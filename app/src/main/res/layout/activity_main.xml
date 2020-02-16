@@ -54,4 +54,32 @@
         android:onClick="testViewPostUpdataUI"
         />
 
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Get传递参数"
+        android:onClick="testGetQueryParams"
+        />
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Post传递参数"
+        android:onClick="testPostQueryMarkdownParams"
+        />
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="上传文件"
+        android:onClick="testUploadFile"
+        />
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="提交表单"
+        android:onClick="testSubmitForm"
+        />
+
 </LinearLayout>

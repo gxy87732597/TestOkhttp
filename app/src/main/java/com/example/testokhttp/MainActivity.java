@@ -10,15 +10,23 @@ import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.FormBody;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class MainActivity extends AppCompatActivity {
@@ -31,8 +39,8 @@ public class MainActivity extends AppCompatActivity {
 
     OkHttpClient okHttpClient = new OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
-            .writeTimeout(30,TimeUnit.SECONDS)
-            .readTimeout(30,TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
             .build();
 
     @Override
@@ -44,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-
+    //get同步请求
     public void testGet(View view) {
         //安卓不能再主线程访问网络
         new Thread() {
@@ -60,10 +68,10 @@ public class MainActivity extends AppCompatActivity {
                     Response response = okHttpClient.newCall(request).execute();
                     //通过调用response的body上的string方法可以得到流的字符串，不能放进主线程
 
-                    if(response.isSuccessful()){
+                    if (response.isSuccessful()) {
                         final String result = response.body().string();
                         showThreadInfo(result);
-                    }else{
+                    } else {
                         showThreadInfo("请求失败");
                     }
 
@@ -74,6 +82,7 @@ public class MainActivity extends AppCompatActivity {
         }.start();
     }
 
+    //显示文本
     private void showThreadInfo(String result) {
         runOnUiThread(new Runnable() {
             @Override
@@ -84,6 +93,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    //get异步请求
     public void testAsyncGet(View view) {
 
         Request request = new Request.Builder().url("https://github.com/gxy87732597").build();
@@ -99,11 +109,11 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call call, Response response) throws IOException {
 
-                if(response.isSuccessful()){
+                if (response.isSuccessful()) {
                     String result = response.body().string();
 
                     showThreadInfo(result);
-                }else{
+                } else {
                     showThreadInfo("请求失败");
                 }
             }
@@ -136,7 +146,7 @@ public class MainActivity extends AppCompatActivity {
 
     //handler更新UI
     //这种使用handler会存在内存泄露的问题，但这里不考虑这些，只是测试
-    private Handler handler = new Handler(){
+    private Handler handler = new Handler() {
         @Override
         public void handleMessage(@NonNull Message msg) {
             super.handleMessage(msg);
@@ -156,9 +166,9 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
-                if(response.isSuccessful()){
-                    handler.obtainMessage(0,response.body().string()).sendToTarget();
-                }else{
+                if (response.isSuccessful()) {
+                    handler.obtainMessage(0, response.body().string()).sendToTarget();
+                } else {
                     showThreadInfo("请求失败");
                 }
             }
@@ -177,7 +187,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
-                if(response.isSuccessful()){
+                if (response.isSuccessful()) {
                     String result = response.body().string();
                     runOnUiThread(new Runnable() {
                         @Override
@@ -191,7 +201,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-
+    //View.Post更新UI
     public void testViewPostUpdataUI(View view) {
         Request request = new Request.Builder().url("https://github.com/gxy87732597").build();
 
@@ -204,12 +214,119 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call call, Response response) throws IOException {
                 String result = response.body().string();
-               tv.post(new Runnable() {
-                   @Override
-                   public void run() {
-                       tv.setText(result);
-                   }
-               });
+                tv.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        tv.setText(result);
+                    }
+                });
+            }
+        });
+
+    }
+
+    //get传递参数
+    public void testGetQueryParams(View view) {
+        //将要传递的参数添加到Map中，比如：用户登录名，密码
+        HashMap<String, Object> params = new HashMap<>();
+        params.put("s", "Android");
+        params.put("order", 0);
+
+        //然后调用一个方法格式化参数
+        //https://github.com/search?q=image+android
+        //http://me.woblog.cn/?order=0&s=Android&
+        String url = formatParams("http://me.woblog.cn/", params);
+        Request request = new Request.Builder()
+                .url(url)
+                .build();
+
+        okHttpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                showThreadInfo(e.getLocalizedMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                String result = response.body().string();
+                showThreadInfo(result);
+            }
+        });
+
+    }
+
+    //格式化参数
+    private String formatParams(String url, HashMap<String, Object> params) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(url);
+        sb.append("?");
+        for (Map.Entry<String, Object> p : params.entrySet()) {
+            sb.append(p.getKey());
+            sb.append("=");
+            try {
+                sb.append(URLEncoder.encode(p.getValue().toString(), "utf-8"));
+            } catch (UnsupportedEncodingException e) {
+                throw new IllegalArgumentException(e);
+            }
+            sb.append("&"); //这个&符号，最好在最后移除，因为末尾多一个
+        }
+        return sb.toString();
+
+    }
+
+    //post传递Markdown参数
+    //这个类型要和服务端协定
+    final MediaType MEDIA_TYPE_MARKDOWN = MediaType.parse("text/x-markdown; charset=utf-8");
+    public void testPostQueryMarkdownParams(View view) {
+
+        //新建一段markdown文本
+        String postBody = ""
+                + "Releases\\n"
+                + "--------\\n"
+                + "\\n"
+                + " * _1.0_ May 6, 2013\\n"
+                + " * _1.1_ June 15, 2013\\n"
+                + " * _1.2_ August 11, 2013\\n";
+        //创建一个RequestBody
+        RequestBody requestBody = RequestBody.create(MEDIA_TYPE_MARKDOWN, postBody);
+        //通过post方法传入requestBody
+        new Request.Builder().url("https://api.github.com/markdown/raw")
+                .post(requestBody)
+                .build();
+
+    }
+
+    //上传文件
+    //根据File创建一个请求体
+    public static final MediaType MEDIA_TYPE_IMAGE_JPG = MediaType.parse("image/jpeg: charset=utf-8");
+    public void testUploadFile(View view) {
+        RequestBody requestBody = RequestBody.create(MEDIA_TYPE_IMAGE_JPG, new File("/sdcard/a.jpg"));
+        Request request = new Request.Builder()
+                .url("https://api.github.com/markdown/raw")
+                .post(requestBody).build();
+    }
+
+    //提交表单
+
+
+    public void testSubmitForm(View view) {
+        FormBody formBody = new FormBody.Builder()
+                .add("username","slimee")
+                .addEncoded("password", "123").build();
+
+        Request request = new Request.Builder().url("https://api.github.com/markdown/raw")
+                .post(formBody).build();
+
+        okHttpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                showThreadInfo(e.getLocalizedMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                String result = response.body().string();
+                showThreadInfo(result);
             }
         });
 
