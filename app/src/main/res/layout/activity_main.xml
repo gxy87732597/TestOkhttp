@@ -126,6 +126,24 @@
             android:onClick="testShowNetworkIamgeFile"
             android:text="显示网络图片"/>
 
+        <Button
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:onClick="testUseLogInterceptor"
+            android:text="使用日志拦截器"/>
+
+        <Button
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:onClick="testHeaders"
+            android:text="修改请求头"/>
+
+        <Button
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:onClick="testUseCache"
+            android:text="使用缓存"/>
+
 
     </LinearLayout>
 

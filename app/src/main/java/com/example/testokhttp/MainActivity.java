@@ -13,6 +13,7 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.example.testokhttp.interceptor.loggingInterceptor;
 import com.google.gson.Gson;
 
 import java.io.File;
@@ -23,6 +24,7 @@ import java.io.Reader;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -30,9 +32,12 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import domain.User;
+import okhttp3.Cache;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.FormBody;
+import okhttp3.Headers;
+import okhttp3.Interceptor;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
@@ -50,10 +55,21 @@ public class MainActivity extends AppCompatActivity {
     //OkHttpClient okHttpClient = new OkHttpClient.Builder().build();
     //OkHttpClient okHttpClient = new OkHttpClient();
 
+    //配置okhttpclient
+//    OkHttpClient okHttpClient = new OkHttpClient.Builder()
+//            .connectTimeout(10, TimeUnit.SECONDS)
+//            .writeTimeout(30, TimeUnit.SECONDS)
+//            .readTimeout(30, TimeUnit.SECONDS)
+//            .build();
+
+    //okhttpclient配置应用拦截器
+//    OkHttpClient okHttpClient = new OkHttpClient.Builder()
+//            .addInterceptor(new loggingInterceptor())
+//            .build();
+
+    //okhttpclient配置网络拦截器
     OkHttpClient okHttpClient = new OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
+            .addNetworkInterceptor(new loggingInterceptor())
             .build();
 
     @Override
@@ -63,7 +79,6 @@ public class MainActivity extends AppCompatActivity {
 
         tv = findViewById(R.id.tv);
         iv = findViewById(R.id.iv);
-
 
     }
 
@@ -672,5 +687,122 @@ public class MainActivity extends AppCompatActivity {
             }
         }.start();
 
+    }
+
+    //日志拦截器
+    public void testUseLogInterceptor(View view) {
+        Request request = new Request.Builder().url("https://www.jianshu.com/u/9eaf6e16b822").build();
+
+        okHttpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                showThreadInfo(e.getLocalizedMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if(response.isSuccessful()){
+                    String result = response.body().string();
+                    showThreadInfo(result);
+                }else{
+                    showThreadInfo("请求失败");
+                }
+
+            }
+        });
+    }
+
+    //修改网络头
+    public void testHeaders(View view) {
+        new Thread(){
+            @Override
+            public void run() {
+                super.run();
+
+                Request request = new Request.Builder()
+                        .url("https://www.jianshu.com/u/9eaf6e16b822")
+                        .header("username","pich")
+                        .addHeader("password","13456")
+                        .removeHeader("custom")
+                        .build();
+
+                try {
+                    Response response = okHttpClient.newCall(request).execute();
+                    //获取Server请求头
+                    String server = response.header("Server");
+                    //获取多个请求头
+                    List<String > servers = response.headers("Server");
+                    //获取Date,如果没有就默认值
+                    String date = response.header("Date", "这是默认值");
+                    //获取所有header,包装到Headers类
+                    Headers headers = response.headers();
+
+                    Log.d("headers", "server:"+ server);
+                    Log.d("headers", "Date:"+ date);
+                    Log.d("headers", "headers:"+ headers.toString());
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }.start();
+    }
+
+
+    //缓存
+    public void testUseCache(View view) {
+        new Thread(){
+
+            private Request request;
+
+            @Override
+            public void run() {
+                super.run();
+
+                request = new Request.Builder().url("http://www.publicobject.com/helloworld.txt").build();
+                //创建缓存目录
+                //  /data/data/packagenname/cache/http
+                File file = new File(getCacheDir(), "http");
+                //创建缓存
+                Cache cache = new Cache(file, 1024 * 1024 * 100);
+
+                OkHttpClient okHttpClient2 = new OkHttpClient.Builder()
+                        .addInterceptor(new loggingInterceptor())
+                        .cache(cache)
+                        .build();
+
+                try {
+                    Response response = okHttpClient2.newCall(request).execute();
+
+                    if(response.isSuccessful()){
+                        Log.d("Cache", "response: " + bodyString(response));
+                        Log.d("Cache", "networkResponse: " + bodyString(response.networkResponse()));
+                        Log.d("Cache", "cacheResponse: " + bodyString(response.cacheResponse()));
+                    }
+
+                    response = okHttpClient2.newCall(request).execute();
+
+                    if(response.isSuccessful()){
+                        Log.d("Cache", "response: " + bodyString(response));
+                        Log.d("Cache", "networkResponse: " + bodyString(response.networkResponse()));
+                        Log.d("Cache", "cacheResponse: " + bodyString(response.cacheResponse()));
+                    }
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+
+            }
+
+            private String bodyString(Response response) throws IOException {
+                if(response != null && response.body() != null){
+                   return response.body().string();
+                }
+
+                return null;
+            }
+
+        }.start();
     }
 }
