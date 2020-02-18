@@ -3,16 +3,20 @@ package com.example.testokhttp;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.google.gson.Gson;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
@@ -20,6 +24,9 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import domain.User;
@@ -32,10 +39,12 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import okhttp3.internal.Util;
 
 public class MainActivity extends AppCompatActivity {
 
     private TextView tv;
+    private ImageView iv;
 
     //创建OkHttpClient
     //OkHttpClient okHttpClient = new OkHttpClient.Builder().build();
@@ -53,6 +62,8 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         tv = findViewById(R.id.tv);
+        iv = findViewById(R.id.iv);
+
 
     }
 
@@ -281,6 +292,7 @@ public class MainActivity extends AppCompatActivity {
     //post传递Markdown参数
     //这个类型要和服务端协定
     final MediaType MEDIA_TYPE_MARKDOWN = MediaType.parse("text/x-markdown; charset=utf-8");
+
     public void testPostQueryMarkdownParams(View view) {
 
         //新建一段markdown文本
@@ -303,6 +315,7 @@ public class MainActivity extends AppCompatActivity {
     //上传文件
     //根据File创建一个请求体
     public static final MediaType MEDIA_TYPE_IMAGE_JPG = MediaType.parse("image/jpeg: charset=utf-8");
+
     public void testUploadFile(View view) {
         RequestBody requestBody = RequestBody.create(MEDIA_TYPE_IMAGE_JPG, new File("/sdcard/a.jpg"));
         Request request = new Request.Builder()
@@ -313,7 +326,7 @@ public class MainActivity extends AppCompatActivity {
     //提交表单
     public void testSubmitForm(View view) {
         FormBody formBody = new FormBody.Builder()
-                .add("username","slimee")
+                .add("username", "slimee")
                 .addEncoded("password", "123").build();
 
         Request request = new Request.Builder().url("https://api.github.com/markdown/raw")
@@ -337,7 +350,7 @@ public class MainActivity extends AppCompatActivity {
     //上传文件
     public void testSubmitFileForm(View view) {
         //File类型的RequestBody
-        RequestBody imageRequestBody = RequestBody.create(MediaType.parse("application/octet-stream"),new File("/sdcard/a.jpg"));
+        RequestBody imageRequestBody = RequestBody.create(MediaType.parse("application/octet-stream"), new File("/sdcard/a.jpg"));
 
         //创建MultipartBody，通过addFormDataPart方法添加每一个表单
         MultipartBody multipartBody = new MultipartBody.Builder()
@@ -376,7 +389,7 @@ public class MainActivity extends AppCompatActivity {
                 .post(RequestBody.create(MEDIA_TYPE_MARKDOWN, "这是一段Markdown代码"))
                 .build();
 
-        Request  headRequest = new Request.Builder()
+        Request headRequest = new Request.Builder()
                 .url("https://api.github.com/markdown/raw")
                 .head()
                 .build();
@@ -407,7 +420,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //解析JSON
-    
     public void testParseObject(View view) {
         Request request = new Request.Builder().url("https://api.github.com/users/lifengsofts").build();
 
@@ -424,17 +436,241 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
-                if(response.isSuccessful()){
+                if (response.isSuccessful()) {
                     Reader reader = response.body().charStream();
                     Gson gson = new Gson();
-                    User user = gson.fromJson(reader,User.class);
+                    User user = gson.fromJson(reader, User.class);
                     showThreadInfo(user.toString());
 
-                }else{
+                } else {
                     showThreadInfo("请求失败");
                 }
 
             }
         });
+    }
+
+    //只要一个线程去执行任务
+    private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
+
+    //取消请求
+    public void testAutoCancelRequest(View view) {
+
+        new Thread() {
+
+            @Override
+            public void run() {
+                super.run();
+
+                Request request = new Request.Builder().url("http://httpbin.org/delay/2").build();
+
+                final long startNanos = System.nanoTime();
+
+                //监听请求的执行时间
+                Call call = okHttpClient.newCall(request);
+
+                //这里提交一个异步任务，他在一秒后取消
+                executorService.schedule(new Runnable() {
+                    @Override
+                    public void run() {
+                        Log.d("TAG", String.format("%2f cancel call .%n",
+                                (System.nanoTime() - startNanos) / 1e9f));
+
+                        call.cancel();
+
+                        Log.d("TAG", String.format("%2f cancel call .%n",
+                                (System.nanoTime() - startNanos) / 1e9f));
+
+                    }
+                }, 1, TimeUnit.SECONDS);
+
+                try {
+                    Log.d("TAG", String.format("%2f Executing call .%n",
+                            (System.nanoTime() - startNanos) / 1e9f));
+
+                    Response response = call.execute();
+
+                    Log.d("TAG", String.format("%2f call was expected to fail, but completed: %s%n",
+                            (System.nanoTime() - startNanos) / 1e9f, response));
+
+                } catch (IOException e) {
+                    //如果一个线程正在写请求或读响应，他蹦出IOException异常
+                    Log.d("TAG", String.format("%2f call failed as expected:%s%n",
+                            (System.nanoTime() - startNanos) / 1e9f), e);
+//                    e.printStackTrace();
+                }
+            }
+        }.start();
+
+    }
+
+    //取消异步请求
+    public void testAutoCancelAsyncRequest(View view) {
+
+        Request request = new Request.Builder().url("http://httpbin.org/delay/2").build();
+
+        final long startNanos = System.nanoTime();
+
+        //监听请求的执行时间
+        Call call = okHttpClient.newCall(request);
+
+        //这里提交一个异步任务，他在一秒后取消
+        executorService.schedule(new Runnable() {
+            @Override
+            public void run() {
+                Log.d("TAG", String.format("%2f cancel call .%n",
+                        (System.nanoTime() - startNanos) / 1e9f));
+
+                call.cancel();
+
+                Log.d("TAG", String.format("%2f cancel call .%n",
+                        (System.nanoTime() - startNanos) / 1e9f));
+
+            }
+        }, 1, TimeUnit.SECONDS);
+
+        call.enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                Log.d("TAG", "onFailure:"+e.getLocalizedMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                Log.d("TAG","onResponse:"+response.body().string());
+            }
+        });
+
+    }
+
+    //下载文件
+    public void testDownloadFile(View view) {
+        Request request = new Request.Builder().url("https://www.jianshu.com/u/9eaf6e16b822").build();
+
+        okHttpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                showThreadInfo(e.getLocalizedMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if(response.isSuccessful()){
+                    InputStream inputStream = response.body().byteStream();
+
+                    FileOutputStream fileOutputStream = new FileOutputStream("/sdcard/a.html");
+
+                    byte[] buffer=new byte[4096];
+                    int len = -1;
+                    while((len =inputStream.read(buffer)) != -1){
+                        fileOutputStream.write(buffer,0,len);
+                    }
+
+                    fileOutputStream.close();
+                    inputStream.close();
+//                    Util.closeQuietly(fileOutputStream);
+//                    Util.closeQuietly(inputStream);
+                }
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+
+                    }
+                });
+            }
+        });
+
+
+       /* 同步方式
+       new Thread(){
+
+            private FileOutputStream fileOutputStream;
+            private InputStream inputStream;
+            Request request = new Request.Builder()
+                    .url("https://www.jianshu.com/u/9eaf6e16b822").build();
+
+            @Override
+            public void run() {
+                super.run();
+
+                try {
+                    Response response = okHttpClient.newCall(request).execute();
+                    byte[] buffer=new byte[4096];
+                    int len = -1;
+                    if(response.isSuccessful()){
+                        inputStream = response.body().byteStream();
+                        fileOutputStream = new FileOutputStream("/sdcard/a.html");
+                        while((len= inputStream.read(buffer)) != -1){
+                            fileOutputStream.write(buffer,0,len);
+                        }
+
+                        Util.closeQuietly(inputStream);
+                        Util.closeQuietly(fileOutputStream);
+
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }finally{
+                    try {
+                        fileOutputStream.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
+                    try {
+                        inputStream.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+            }
+        }.start();
+*/
+
+
+
+
+    }
+
+    //下载图片
+    public void testShowNetworkIamgeFile(View view) {
+        new Thread(){
+
+            Request request = new Request.Builder()
+                    .url("http://mat1.gtimg.com/www/images/qq2012/qqlogo_2x.png").build();
+
+            @Override
+            public void run() {
+                super.run();
+
+                try {
+                    Response response = okHttpClient.newCall(request).execute();
+                    byte[] buffer=new byte[4096];
+                    int len = -1;
+                    if(response.isSuccessful()){
+                        InputStream inputStream = response.body().byteStream();
+
+                        if((len=inputStream.read(buffer))!= -1){
+                            Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    iv.setImageBitmap(bitmap);
+                                }
+                            });
+
+                        }
+
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+            }
+        }.start();
+
     }
 }

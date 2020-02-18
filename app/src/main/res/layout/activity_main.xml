@@ -17,6 +17,11 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
 
+        <ImageView
+            android:id="@+id/iv"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
         <Button
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -95,6 +100,32 @@
             android:layout_height="wrap_content"
             android:onClick="testParseObject"
             android:text="解析JSON"/>
+
+        <Button
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:onClick="testAutoCancelRequest"
+            android:text="自动取消请求"/>
+
+        <Button
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:onClick="testAutoCancelAsyncRequest"
+            android:text="自动取消异步请求"/>
+
+        <Button
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:onClick="testDownloadFile"
+            android:text="下载文件"/>
+
+
+        <Button
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:onClick="testShowNetworkIamgeFile"
+            android:text="显示网络图片"/>
+
 
     </LinearLayout>
 
