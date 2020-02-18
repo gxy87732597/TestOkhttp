@@ -144,6 +144,12 @@
             android:onClick="testUseCache"
             android:text="使用缓存"/>
 
+        <Button
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:onClick="testCacheAnyData"
+            android:text="使用拦截器支持缓存任意网页"/>
+
 
     </LinearLayout>
 

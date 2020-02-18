@@ -792,7 +792,6 @@ public class MainActivity extends AppCompatActivity {
                     e.printStackTrace();
                 }
 
-
             }
 
             private String bodyString(Response response) throws IOException {
@@ -804,5 +803,87 @@ public class MainActivity extends AppCompatActivity {
             }
 
         }.start();
+    }
+
+    //使用拦截器支持缓存任意网页
+    private static final Interceptor FORCE_CACHE_NETWORK_DATA_INTERCEPTOR = new Interceptor() {
+        @Override public Response intercept(Interceptor.Chain chain) throws IOException {
+            Response originalResponse = chain.proceed(chain.request());
+            return originalResponse.newBuilder()
+                    .header("Cache-Control", "max-age=60") //这里设置了缓存时间为60秒
+                    .build();
+        }
+    };
+
+    public void testCacheAnyData(View view) {
+        new Thread(){
+            @Override
+            public void run() {
+                super.run();
+
+                Request request = new Request.Builder().url("https://www.jianshu.com/u/9eaf6e16b822").build();
+
+                //创建缓存目录
+                //getCacheDir(): ./Data/Data/packgenname/cache/http
+                File file = new File(getCacheDir(), "http");
+                //创建缓存
+                Cache cache = new Cache(file, 1024 * 1024 * 100);
+
+                OkHttpClient okHttpClient3 = new OkHttpClient
+                        .Builder()
+                        .addInterceptor(new loggingInterceptor())
+                        .addNetworkInterceptor(FORCE_CACHE_NETWORK_DATA_INTERCEPTOR)
+                        .cache(cache)
+                        .build();
+
+                try {
+                    Response response = okHttpClient3.newCall(request).execute();
+
+                    if(response.isSuccessful()){
+                        Log.d("Cache", "response: " + bodyString(response));
+                        Log.d("Cache", "networkResponse: " + bodyString(response.networkResponse()));
+                        Log.d("Cache", "cacheResponse: " + bodyString(response.cacheResponse()));
+
+                    }else{
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                tv.setText("请求失败");
+                            }
+                        });
+                    }
+
+                    response = okHttpClient3.newCall(request).execute();
+
+                    if(response.isSuccessful()){
+                        Log.d("Cache", "response: " + bodyString(response));
+                        Log.d("Cache", "networkResponse: " + bodyString(response.networkResponse()));
+                        Log.d("Cache", "cacheResponse: " + bodyString(response.cacheResponse()));
+
+                    }else{
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                tv.setText("请求失败");
+                            }
+                        });
+                    }
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+            }
+
+            private String bodyString(Response response) throws IOException {
+                if(response != null &&response.body() != null){
+                    return response.body().string();
+                }
+                return null;
+            }
+
+        }.start();
+
+
     }
 }

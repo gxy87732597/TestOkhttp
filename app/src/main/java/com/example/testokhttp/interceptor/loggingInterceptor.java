@@ -34,12 +34,12 @@ public class loggingInterceptor implements Interceptor {
         if (BuildConfig.DEBUG) {
             //调试模式，可以打印更多的信息
             //但是注意不能打印请求，不然后面就不会再获取了，因为流只能读取一次
-            Log.d(TAG, String.format("Received response for %s in %.1fms%n%s",
-                    response.request().url(), (t2 - t1) / 1e6d, response.headers()));
+            Log.d(TAG, String.format("Received response for %s in %.1fms Status %d %n%s",
+                    response.request().url(), (t2 - t1) / 1e6d, response.code(),response.headers()));
         } else {
             //非调试模式，只打印时间，和请求头
-            Log.d(TAG, String.format("Received response for %s in %.1fms%n%s",
-                    response.request().url(), (t2 - t1) / 1e6d, response.headers()));
+            Log.d(TAG, String.format("Received response for %s in %.1fm  Status %d s%n%s",
+                    response.request().url(), (t2 - t1) / 1e6d, response.code(),response.headers()));
         }
 
         return response;
